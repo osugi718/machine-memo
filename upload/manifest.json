@@ -1,0 +1,22 @@
+{
+  "name": "機械操作メモ",
+  "short_name": "操作メモ",
+  "description": "工作機械の操作手順を記録するアプリ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1c20",
+  "theme_color": "#f0a500",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
