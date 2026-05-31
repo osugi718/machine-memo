@@ -484,9 +484,6 @@ function ctxCopyAll() {
 function ctxReplace() { const id=ctxId; closeCtx(); document.getElementById('file-'+id)?.click(); }
 function ctxDraw() { const id=ctxId; closeCtx(); const s=steps.find(x=>x.id===id); if(s?.photo) openDrawModal(id); }
 
-let stepSelSelected = new Set();
-let stepSelSrcId = null;
-
 function ctxCopySelect() {
   const srcStep = steps.find(s => s.id === ctxId);
   const savedCtxId = ctxId;
