@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>機械操作メモ</title>
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="操作メモ">
+<meta name="theme-color" content="#f0a500">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #1a1c20; --surface: #22262d; --surface2: #2a2f38;
+    --accent: #f0a500; --text: #e8eaf0; --text2: #8a92a0;
+    --border: #3a4050; --danger: #e05050; --green: #40c080;
+  }
+  body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .screen { display: none; flex-direction: column; min-height: 100vh; padding-bottom: 80px; }
+  .screen.active { display: flex; }
+  .header { background: var(--surface); border-bottom: 2px solid var(--accent); padding: 12px 16px; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .header-title { font-size: 16px; font-weight: 700; color: var(--accent); }
+  .header-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .btn-icon { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 6px 10px; font-size: 13px; cursor: pointer; }
+  .btn-back { background: none; border: none; color: var(--accent); font-size: 22px; cursor: pointer; padding: 0 10px 0 0; line-height: 1; }
+  .list-body { padding: 12px; flex: 1; }
+  .manual-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; gap: 12px; }
+  .manual-card-icon { font-size: 28px; flex-shrink: 0; }
+  .manual-card-info { flex: 1; min-width: 0; }
+  .manual-card-title { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .manual-card-meta { font-size: 11px; color: var(--text2); margin-top: 3px; }
+  .manual-card-del { background: none; border: none; color: var(--danger); font-size: 18px; cursor: pointer; padding: 4px 8px; flex-shrink: 0; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
+  .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; line-height: 1.7; }
+  .title-section { padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .title-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 15px; font-family: inherit; font-weight: 700; }
+  .title-input:focus { outline: none; border-color: var(--accent); }
+  .title-input::placeholder { color: var(--text2); }
+  .steps { padding: 12px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+  .step-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .step-header { display: flex; align-items: center; padding: 8px 10px; background: var(--surface2); border-bottom: 1px solid var(--border); gap: 8px; }
+  .step-num { background: var(--accent); color: #111; font-weight: 700; font-size: 12px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-label { font-size: 12px; color: var(--text2); flex: 1; }
+  .step-delete { background: none; border: none; color: var(--danger); font-size: 16px; cursor: pointer; padding: 2px 6px; line-height: 1; }
+  .step-body { display: flex; min-height: 120px; }
+  .photo-area { width: 45%; min-height: 120px; background: var(--surface2); border-right: 1px solid var(--border); position: relative; overflow: hidden; flex-shrink: 0; -webkit-user-select: none; user-select: none; }
+  .photo-area.pressing { filter: brightness(1.4); }
+  .photo-area input[type=file] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2; }
+  .photo-placeholder { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--text2); pointer-events: none; z-index: 1; }
+  .photo-placeholder .icon { font-size: 28px; }
+  .photo-placeholder span { font-size: 11px; text-align: center; line-height: 1.5; }
+  .photo-img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; pointer-events: none; z-index: 0; }
+  .draw-btn { position: absolute; bottom: 4px; right: 4px; background: rgba(240,165,0,0.9); border: none; border-radius: 5px; color: #111; font-size: 13px; padding: 3px 7px; cursor: pointer; font-weight: 700; z-index: 3; }
+  .text-area-wrap { flex: 1; display: flex; flex-direction: column; padding: 8px; gap: 6px; }
+  .step-textarea { flex: 1; min-height: 100px; background: transparent; border: none; color: var(--text); font-size: 13px; font-family: inherit; resize: none; line-height: 1.6; width: 100%; }
+  .step-textarea:focus { outline: none; }
+  .step-textarea::placeholder { color: var(--text2); }
+  .char-count { font-size: 10px; color: var(--text2); text-align: right; }
+  .add-step-btn { margin: 4px 12px 0; width: calc(100% - 24px); padding: 14px; background: var(--surface); border: 2px dashed var(--border); border-radius: 10px; color: var(--text2); font-size: 14px; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px; display: flex; gap: 10px; z-index: 100; }
+  .bottom-bar button { flex: 1; padding: 11px; border-radius: 8px; border: none; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .btn-save { background: var(--accent); color: #111; }
+  .btn-new { background: var(--green); color: #111; }
+  .btn-export { background: var(--surface2); color: var(--text); border: 1px solid var(--border) !important; }
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 200; flex-direction: column; }
+  .modal-overlay.open { display: flex; }
+  .modal-header { padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .modal-header span { font-size: 14px; font-weight: 700; flex: 1; }
+  .canvas-wrap { flex: 1; overflow: hidden; position: relative; touch-action: none; }
+  #drawCanvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+  .draw-tools { background: var(--surface); border-top: 1px solid var(--border); padding: 10px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .color-btn { width: 28px; height: 28px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; }
+  .color-btn.active { border-color: white; }
+  .size-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .size-btn.active { background: var(--accent); color: #111; border-color: var(--accent); }
+  .tool-sep { flex: 1; }
+  .btn-sm { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .btn-sm.green { background: var(--green); color: #111; border-color: var(--green); font-weight: 700; }
+  .btn-sm.red { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .export-area { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .export-option { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; cursor: pointer; display: flex; align-items: center; gap: 12px; }
+  .export-icon { font-size: 24px; }
+  .export-label { font-size: 14px; font-weight: 700; }
+  .export-desc { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--green); color: #111; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 300; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .ctx-backdrop { display: none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); z-index: 400; }
+  .ctx-backdrop.open { display: block; }
+  .ctx-menu { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 16px 16px 0 0; border-top: 2px solid var(--accent); padding: 0 0 20px; z-index: 401; transform: translateY(100%); transition: transform 0.25s ease; }
+  .ctx-backdrop.open .ctx-menu { transform: translateY(0); }
+  .ctx-title { padding: 14px 16px 10px; font-size: 13px; color: var(--text2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .ctx-preview { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+  .ctx-btn { width: 100%; background: none; border: none; border-bottom: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 15px; padding: 16px 20px; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 14px; }
+  .ctx-btn:active { background: var(--surface2); }
+  .ctx-icon { font-size: 20px; width: 28px; text-align: center; }
+  .ctx-cancel { width: calc(100% - 32px); margin: 10px 16px 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text2); font-family: inherit; font-size: 14px; font-weight: 700; padding: 14px; cursor: pointer; }
+  .stepsel-backdrop { display: none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); z-index: 500; }
+  .stepsel-backdrop.open { display: flex; align-items: flex-end; }
+  .stepsel-menu { width: 100%; background: var(--surface); border-radius: 16px 16px 0 0; border-top: 2px solid var(--accent); max-height: 70vh; display: flex; flex-direction: column; }
+  .stepsel-header { padding: 14px 16px 10px; font-size: 14px; font-weight: 700; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .stepsel-header img { width: 36px; height: 36px; object-fit: cover; border-radius: 5px; }
+  .stepsel-list { overflow-y: auto; flex: 1; }
+  .stepsel-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .stepsel-item:active { background: var(--surface2); }
+  .stepsel-item.selected { background: rgba(240,165,0,0.15); }
+  .stepsel-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .stepsel-item.selected .stepsel-check { background: var(--accent); border-color: var(--accent); color: #111; }
+  .stepsel-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 5px; border: 1px solid var(--border); flex-shrink: 0; background: var(--surface2); }
+  .stepsel-info { flex: 1; }
+  .stepsel-name { font-size: 13px; font-weight: 700; }
+  .stepsel-sub { font-size: 11px; color: var(--text2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+  .stepsel-footer { padding: 10px 16px 16px; display: flex; gap: 10px; border-top: 1px solid var(--border); }
+  .stepsel-footer button { flex: 1; padding: 12px; border-radius: 8px; border: none; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .stepsel-ok { background: var(--accent); color: #111; }
+  .stepsel-cancel { background: var(--surface2); color: var(--text2); border: 1px solid var(--border) !important; }
+</style>
+</head>
+<body>
+
+<div class="screen active" id="listScreen">
+  <div class="header">
+    <div>
+      <div class="header-title">⚙️ 機械操作メモ</div>
+      <div class="header-sub" id="manualCount">0 件</div>
+    </div>
+  </div>
+  <div class="list-body" id="listBody">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">📋</div>
+      <p>まだメモがありません<br>「＋ 新規作成」からはじめましょう</p>
+    </div>
+  </div>
+  <div class="bottom-bar">
+    <button class="btn-new" onclick="newManual()">＋ 新規作成</button>
+  </div>
+</div>
+<div class="screen" id="editorScreen">
+  <div class="header">
+    <button class="btn-back" onclick="goList()">‹</button>
+    <div style="flex:1">
+      <div class="header-title">手順エディタ</div>
+      <div class="header-sub" id="stepCount">0 ステップ</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon" onclick="showExport()">📤</button>
+    </div>
+  </div>
+  <div class="title-section">
+    <input type="text" class="title-input" id="docTitle" placeholder="機械名・作業名（例：半自動グラインダー 砥石交換）">
+  </div>
+  <div class="steps" id="stepsContainer"></div>
+  <button class="add-step-btn" onclick="addStep()">
+    <span style="font-size:20px">＋</span> ステップを追加
+  </button>
+  <div style="height:20px"></div>
+  <div class="bottom-bar">
+    <button class="btn-export btn-sm" onclick="showExport()">📤 書き出し</button>
+    <button class="btn-save" onclick="saveManual()">💾 保存</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="drawModal">
+  <div class="modal-header">
+    <span>✏️ 写真に書き込み</span>
+    <button class="btn-sm red" onclick="closeDrawModal()">閉じる</button>
+  </div>
+  <div class="canvas-wrap"><canvas id="drawCanvas"></canvas></div>
+  <div class="draw-tools">
+    <div class="color-btn active" style="background:#f0a500" data-color="#f0a500" onclick="setColor(this)"></div>
+    <div class="color-btn" style="background:#e05050" data-color="#e05050" onclick="setColor(this)"></div>
+    <div class="color-btn" style="background:#40c080" data-color="#40c080" onclick="setColor(this)"></div>
+    <div class="color-btn" style="background:#60a0f0" data-color="#60a0f0" onclick="setColor(this)"></div>
+    <div class="color-btn" style="background:#ffffff" data-color="#ffffff" onclick="setColor(this)"></div>
+    <button class="size-btn active" data-size="3" onclick="setSize(this)">細</button>
+    <button class="size-btn" data-size="6" onclick="setSize(this)">中</button>
+    <button class="size-btn" data-size="12" onclick="setSize(this)">太</button>
+    <div class="tool-sep"></div>
+    <button class="btn-sm" onclick="undoDraw()">↩</button>
+    <button class="btn-sm" onclick="clearDraw()">🗑</button>
+    <button class="btn-sm green" onclick="applyDraw()">✓ 適用</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="exportModal">
+  <div class="modal-header">
+    <span>📤 書き出し</span>
+    <button class="btn-sm" onclick="document.getElementById('exportModal').classList.remove('open')">閉じる</button>
+  </div>
+  <div class="export-area">
+    <div class="export-option" onclick="exportHTML()">
+      <span class="export-icon">🌐</span>
+      <div><div class="export-label">HTMLファイルとして保存</div><div class="export-desc">写真・書き込みをすべて含んだWebページ</div></div>
+    </div>
+    <div class="export-option" onclick="exportText()">
+      <span class="export-icon">📝</span>
+      <div><div class="export-label">テキストのみコピー</div><div class="export-desc">操作手順テキストをクリップボードにコピー</div></div>
+    </div>
+    <div class="export-option" onclick="window.print()">
+      <span class="export-icon">🖨️</span>
+      <div><div class="export-label">印刷 / PDF保存</div><div class="export-desc">ブラウザの印刷機能でPDF出力も可能</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ctx-backdrop" id="ctxBackdrop" onclick="closeCtx()">
+  <div class="ctx-menu" onclick="event.stopPropagation()">
+    <div class="ctx-title">
+      <img class="ctx-preview" id="ctxPreview" src="" alt="">
+      <span id="ctxLabel">手順 ? の写真</span>
+    </div>
+    <button class="ctx-btn" onclick="ctxCopyNext()"><span class="ctx-icon">📋</span>次のステップにコピー</button>
+    <button class="ctx-btn" onclick="ctxCopyAll()"><span class="ctx-icon">📑</span>以降の全ステップにコピー</button>
+    <button class="ctx-btn" onclick="ctxCopySelect()"><span class="ctx-icon">🎯</span>コピー先のステップを選ぶ</button>
+    <button class="ctx-btn" onclick="ctxReplace()"><span class="ctx-icon">🔄</span>写真を撮り直す</button>
+    <button class="ctx-btn" onclick="ctxDraw()"><span class="ctx-icon">✏️</span>書き込む</button>
+    <button class="ctx-cancel" onclick="closeCtx()">キャンセル</button>
+  </div>
+</div>
+
+<div class="stepsel-backdrop" id="stepselBackdrop" onclick="closeStepSel()">
+  <div class="stepsel-menu" onclick="event.stopPropagation()">
+    <div class="stepsel-header">
+      <img id="stepselPreview" src="" alt="">
+      <span>コピー先のステップを選択</span>
+    </div>
+    <div class="stepsel-list" id="stepselList"></div>
+    <div class="stepsel-footer">
+      <button class="stepsel-cancel" onclick="closeStepSel()">キャンセル</button>
+      <button class="stepsel-ok" onclick="applyStepSel()">✓ コピーする</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let manuals = {}, currentId = null, steps = [];
+let drawCtx = null, drawCanvas = null, currentStepId = null;
+let isDrawing = false, lastX = 0, lastY = 0;
+let drawColor = '#f0a500', drawSize = 3, drawHistory = [], drawBgImage = null;
+let ctxId = null;
+let stepSelSelected = new Set();
+let stepSelSrcId = null;
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function goList() { showScreen('listScreen'); renderList(); }
+function renderList() {
+  const body = document.getElementById('listBody');
+  const ids = Object.keys(manuals);
+  document.getElementById('manualCount').textContent = ids.length + ' 件';
+  document.getElementById('emptyState').style.display = ids.length ? 'none' : 'block';
+  body.querySelectorAll('.manual-card').forEach(c => c.remove());
+  ids.sort((a,b)=>(manuals[b].updatedAt||0)-(manuals[a].updatedAt||0));
+  ids.forEach(id => {
+    const m = manuals[id];
+    const card = document.createElement('div');
+    card.className = 'manual-card';
+    card.innerHTML = `<div class="manual-card-icon">⚙️</div><div class="manual-card-info"><div class="manual-card-title">${m.title||'（タイトルなし）'}</div><div class="manual-card-meta">${m.steps.length}ステップ　${m.updatedAt?new Date(m.updatedAt).toLocaleString('ja-JP'):''}</div></div><button class="manual-card-del" onclick="deleteManual(event,'${id}')">🗑</button>`;
+    card.addEventListener('click', () => openManual(id));
+    body.appendChild(card);
+  });
+}
+function newManual() {
+  currentId = uid(); steps = [];
+  document.getElementById('docTitle').value = '';
+  document.getElementById('stepsContainer').innerHTML = '';
+  showScreen('editorScreen'); addStep(); updateStepCount();
+}
+function openManual(id) {
+  currentId = id; const m = manuals[id]; steps = [];
+  document.getElementById('docTitle').value = m.title || '';
+  document.getElementById('stepsContainer').innerHTML = '';
+  (m.steps||[]).forEach(s => addStep(s));
+  showScreen('editorScreen'); updateStepCount();
+}
+function deleteManual(event, id) {
+  event.stopPropagation();
+  if (!confirm('削除しますか？')) return;
+  delete manuals[id]; saveAllToStorage(); renderList();
+}
+function addStep(data = null) {
+  const id = data ? data.id : uid();
+  const step = { id, photo: data?.photo||null, text: data?.text||'', annotation: data?.annotation||null };
+  steps.push(step);
+  renderStep(step);
+  updateStepCount();
+}
+  function renderStep(step) {
+  const idx = steps.indexOf(step) + 1;
+  const card = document.createElement('div');
+  card.className = 'step-card';
+  card.id = 'step-' + step.id;
+
+  const photoArea = document.createElement('div');
+  photoArea.className = 'photo-area';
+  photoArea.id = 'photo-' + step.id;
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.setAttribute('capture', 'environment');
+  fileInput.id = 'file-' + step.id;
+  fileInput.addEventListener('change', e => handlePhoto(e, step.id));
+
+  let pressTimer = null;
+  let longFired = false;
+
+  fileInput.addEventListener('touchstart', e => {
+    longFired = false;
+    pressTimer = setTimeout(() => {
+      longFired = true;
+      pressTimer = null;
+      photoArea.classList.remove('pressing');
+      const s = steps.find(x => x.id === step.id);
+      if (s && s.photo) openCtx(step.id);
+    }, 600);
+    photoArea.classList.add('pressing');
+  }, { passive: true });
+
+  fileInput.addEventListener('touchend', e => {
+    photoArea.classList.remove('pressing');
+    if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    if (longFired) { e.preventDefault(); longFired = false; }
+  });
+
+  fileInput.addEventListener('touchmove', () => {
+    if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    photoArea.classList.remove('pressing');
+  }, { passive: true });
+
+  fileInput.addEventListener('touchcancel', () => {
+    if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    photoArea.classList.remove('pressing');
+  });
+
+  fileInput.addEventListener('contextmenu', e => e.preventDefault());
+  photoArea.appendChild(fileInput);
+
+  if (step.photo) {
+    const img = document.createElement('img');
+    img.className = 'photo-img'; img.id = 'img-' + step.id;
+    img.src = step.annotation || step.photo;
+    photoArea.appendChild(img);
+  }
+
+  const placeholder = document.createElement('div');
+  placeholder.className = 'photo-placeholder'; placeholder.id = 'placeholder-' + step.id;
+  placeholder.style.display = step.photo ? 'none' : '';
+  placeholder.innerHTML = '<span class="icon">📷</span><span>タップで撮影<br>長押しでコピー</span>';
+  photoArea.appendChild(placeholder);
+
+  if (step.photo) {
+    const drawBtn = document.createElement('button');
+    drawBtn.className = 'draw-btn'; drawBtn.textContent = '✏️';
+    drawBtn.addEventListener('click', e => { e.stopPropagation(); openDrawModal(step.id); });
+    photoArea.appendChild(drawBtn);
+  }
+
+  const textWrap = document.createElement('div');
+  textWrap.className = 'text-area-wrap';
+  const ta = document.createElement('textarea');
+  ta.className = 'step-textarea'; ta.id = 'text-' + step.id;
+  ta.placeholder = '操作手順・注意点などを入力...'; ta.value = step.text;
+  ta.addEventListener('input', function() { updateText(step.id, this.value); });
+  const cc = document.createElement('div');
+  cc.className = 'char-count'; cc.id = 'cc-' + step.id;
+  cc.textContent = step.text.length + '文字';
+  textWrap.appendChild(ta); textWrap.appendChild(cc);
+
+  card.innerHTML = `<div class="step-header"><div class="step-num">${idx}</div><div class="step-label">手順 ${idx}</div><button class="step-delete" onclick="deleteStep('${step.id}')">✕</button></div>`;
+  const body = document.createElement('div');
+  body.className = 'step-body';
+  body.appendChild(photoArea); body.appendChild(textWrap);
+  card.appendChild(body);
+  document.getElementById('stepsContainer').appendChild(card);
+}
+
+function handlePhoto(event, id) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const src = e.target.result;
+    const step = steps.find(s => s.id === id);
+    step.photo = src; step.annotation = null;
+    const area = document.getElementById('photo-' + id);
+    let img = document.getElementById('img-' + id);
+    if (!img) {
+      img = document.createElement('img');
+      img.className = 'photo-img'; img.id = 'img-' + id;
+      area.appendChild(img);
+    }
+    img.src = src;
+    const ph = document.getElementById('placeholder-' + id);
+    if (ph) ph.style.display = 'none';
+    if (!area.querySelector('.draw-btn')) {
+      const drawBtn = document.createElement('button');
+      drawBtn.className = 'draw-btn'; drawBtn.textContent = '✏️';
+      drawBtn.addEventListener('click', e => { e.stopPropagation(); openDrawModal(id); });
+      area.appendChild(drawBtn);
+    }
+    showToast('写真を追加しました');
+  };
+  reader.readAsDataURL(file);
+}
+
+function updatePhotoDisplay(id) {
+  const step = steps.find(s => s.id === id);
+  if (!step) return;
+  const area = document.getElementById('photo-' + id);
+  if (!area) return;
+  let img = document.getElementById('img-' + id);
+  if (!img) {
+    img = document.createElement('img'); img.className = 'photo-img'; img.id = 'img-' + id;
+    area.appendChild(img);
+  }
+  img.src = step.annotation || step.photo;
+  const ph = document.getElementById('placeholder-' + id);
+  if (ph) ph.style.display = 'none';
+  if (!area.querySelector('.draw-btn')) {
+    const drawBtn = document.createElement('button');
+    drawBtn.className = 'draw-btn'; drawBtn.textContent = '✏️';
+    drawBtn.addEventListener('click', e => { e.stopPropagation(); openDrawModal(id); });
+    area.appendChild(drawBtn);
+  }
+}
+
+function updateText(id, val) {
+  const step = steps.find(s => s.id === id);
+  if (step) step.text = val;
+  const cc = document.getElementById('cc-' + id);
+  if (cc) cc.textContent = val.length + '文字';
+}
+
+function deleteStep(id) {
+  if (!confirm('このステップを削除しますか？')) return;
+  steps = steps.filter(s => s.id !== id);
+  document.getElementById('step-' + id)?.remove();
+  renumberSteps(); updateStepCount();
+}
+
+function renumberSteps() {
+  steps.forEach((s, i) => {
+    const card = document.getElementById('step-' + s.id);
+    if (!card) return;
+    card.querySelector('.step-num').textContent = i + 1;
+    card.querySelector('.step-label').textContent = '手順 ' + (i + 1);
+  });
+}
+function updateStepCount() { document.getElementById('stepCount').textContent = steps.length + ' ステップ'; }
+
+function openCtx(id) {
+  ctxId = id;
+  const step = steps.find(s => s.id === id);
+  document.getElementById('ctxPreview').src = step.annotation || step.photo;
+  document.getElementById('ctxLabel').textContent = '手順 ' + (steps.indexOf(step)+1) + ' の写真';
+  document.getElementById('ctxBackdrop').classList.add('open');
+}
+function closeCtx() { document.getElementById('ctxBackdrop').classList.remove('open'); ctxId = null; }
+function ctxCopyNext() {
+  const step = steps.find(s => s.id === ctxId);
+  const next = steps[steps.indexOf(step)+1];
+  if (!next) { showToast('次のステップがありません'); closeCtx(); return; }
+  next.photo = step.photo; next.annotation = step.annotation||null;
+  updatePhotoDisplay(next.id); showToast('次のステップにコピーしました'); closeCtx();
+}
+function ctxCopyAll() {
+  const step = steps.find(s => s.id === ctxId);
+  const targets = steps.slice(steps.indexOf(step)+1);
+  if (!targets.length) { showToast('コピー先のステップがありません'); closeCtx(); return; }
+  targets.forEach(t => { t.photo = step.photo; t.annotation = step.annotation||null; updatePhotoDisplay(t.id); });
+  showToast(targets.length+'件にコピーしました'); closeCtx();
+  }
+  function ctxReplace() { const id=ctxId; closeCtx(); document.getElementById('file-'+id)?.click(); }
+function ctxDraw() { const id=ctxId; closeCtx(); const s=steps.find(x=>x.id===id); if(s?.photo) openDrawModal(id); }
+
+function ctxCopySelect() {
+  const srcStep = steps.find(s => s.id === ctxId);
+  const savedCtxId = ctxId;
+  closeCtx();
+  stepSelSelected = new Set();
+  stepSelSrcId = savedCtxId;
+  document.getElementById('stepselPreview').src = srcStep.annotation || srcStep.photo;
+  const list = document.getElementById('stepselList');
+  list.innerHTML = '';
+  steps.forEach((s, i) => {
+    if (s.id === srcStep.id) return;
+    const item = document.createElement('div');
+    item.className = 'stepsel-item';
+    item.dataset.id = s.id;
+    const thumb = s.photo ? `<img class="stepsel-thumb" src="${s.annotation||s.photo}">` : `<div class="stepsel-thumb" style="display:flex;align-items:center;justify-content:center;font-size:18px;">📷</div>`;
+    const textPreview = s.text ? s.text.slice(0,30) + (s.text.length>30?'…':'') : '（テキストなし）';
+    item.innerHTML = `<div class="stepsel-check"></div>${thumb}<div class="stepsel-info"><div class="stepsel-name">手順 ${i+1}</div><div class="stepsel-sub">${textPreview}</div></div>`;
+    item.addEventListener('click', () => {
+      if (stepSelSelected.has(s.id)) {
+        stepSelSelected.delete(s.id);
+        item.classList.remove('selected');
+        item.querySelector('.stepsel-check').textContent = '';
+      } else {
+        stepSelSelected.add(s.id);
+        item.classList.add('selected');
+        item.querySelector('.stepsel-check').textContent = '✓';
+      }
+    });
+    list.appendChild(item);
+  });
+  document.getElementById('stepselBackdrop').classList.add('open');
+}
+
+function closeStepSel() {
+  document.getElementById('stepselBackdrop').classList.remove('open');
+  stepSelSelected = new Set();
+}
+
+function applyStepSel() {
+  if (!stepSelSelected.size) { showToast('ステップを選んでください'); return; }
+  const src = steps.find(s => s.id === stepSelSrcId);
+  if (!src) { showToast('コピー元が見つかりません'); closeStepSel(); return; }
+  stepSelSelected.forEach(id => {
+    const t = steps.find(s => s.id === id);
+    if (!t) return;
+    t.photo = src.photo; t.annotation = src.annotation || null;
+    updatePhotoDisplay(t.id);
+  });
+  showToast(stepSelSelected.size + '件のステップにコピーしました');
+  closeStepSel();
+}
+
+function saveManual() {
+  const title = document.getElementById('docTitle').value.trim();
+  manuals[currentId] = { id:currentId, title, steps: JSON.parse(JSON.stringify(steps)), updatedAt: Date.now() };
+  saveAllToStorage(); showToast('保存しました ✓');
+}
+function saveAllToStorage() {
+  try { localStorage.setItem('machineManuals_v2', JSON.stringify(manuals)); } catch(e) { showToast('容量不足: HTMLで書き出してください'); }
+}
+function loadAllFromStorage() {
+  const raw = localStorage.getItem('machineManuals_v2');
+  if (raw) { try { manuals = JSON.parse(raw); } catch(e) {} }
+  const old = localStorage.getItem('machineManual');
+  if (old && !raw) { try { const d=JSON.parse(old); const id=uid(); manuals[id]={id,title:d.title||'（旧データ）',steps:d.steps||[],updatedAt:Date.now()}; saveAllToStorage(); } catch(e) {} }
+}
+
+function openDrawModal(id) {
+  currentStepId = id;
+  const step = steps.find(s => s.id === id);
+  if (!step?.photo) return;
+  drawHistory = [];
+  drawCanvas = document.getElementById('drawCanvas');
+  drawCtx = drawCanvas.getContext('2d');
+  document.getElementById('drawModal').classList.add('open');
+  setTimeout(() => {
+    const wrap = drawCanvas.parentElement;
+    drawCanvas.width = wrap.offsetWidth; drawCanvas.height = wrap.offsetHeight;
+    const img = new Image();
+    img.onload = () => { drawBgImage = img; redrawCanvas(); };
+    img.src = step.annotation || step.photo;
+  }, 50);
+}
+function redrawCanvas() {
+  if (!drawCtx||!drawBgImage) return;
+  const cw=drawCanvas.width, ch=drawCanvas.height;
+  const scale=Math.min(cw/drawBgImage.width, ch/drawBgImage.height);
+  const dx=(cw-drawBgImage.width*scale)/2, dy=(ch-drawBgImage.height*scale)/2;
+  drawCtx.clearRect(0,0,cw,ch);
+  drawCtx.fillStyle='#1a1c20'; drawCtx.fillRect(0,0,cw,ch);
+  drawCtx.drawImage(drawBgImage,dx,dy,drawBgImage.width*scale,drawBgImage.height*scale);
+}
+drawCanvas = document.getElementById('drawCanvas');
+drawCanvas.addEventListener('pointerdown', e => {
+  if (!drawCtx) return; isDrawing = true;
+  const r = drawCanvas.getBoundingClientRect();
+  lastX=(e.clientX-r.left)*(drawCanvas.width/r.width);
+  lastY=(e.clientY-r.top)*(drawCanvas.height/r.height);
+  drawHistory.push(drawCtx.getImageData(0,0,drawCanvas.width,drawCanvas.height));
+});
+drawCanvas.addEventListener('pointermove', e => {
+  if (!isDrawing||!drawCtx) return;
+  const r=drawCanvas.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(drawCanvas.width/r.width);
+  const y=(e.clientY-r.top)*(drawCanvas.height/r.height);
+  drawCtx.beginPath(); drawCtx.moveTo(lastX,lastY); drawCtx.lineTo(x,y);
+  drawCtx.strokeStyle=drawColor; drawCtx.lineWidth=drawSize;
+  drawCtx.lineCap='round'; drawCtx.lineJoin='round'; drawCtx.stroke();
+  lastX=x; lastY=y;
+});
+drawCanvas.addEventListener('pointerup', ()=>{isDrawing=false;});
+drawCanvas.addEventListener('pointerleave', ()=>{isDrawing=false;});
+function setColor(el){document.querySelectorAll('.color-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');drawColor=el.dataset.color;}
+function setSize(el){document.querySelectorAll('.size-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');drawSize=parseInt(el.dataset.size);}
+function undoDraw(){if(!drawHistory.length||!drawCtx)return;drawCtx.putImageData(drawHistory.pop(),0,0);}
+function clearDraw(){if(!confirm('全消しますか？'))return;drawHistory=[];redrawCanvas();}
+function applyDraw(){
+  const step=steps.find(s=>s.id===currentStepId);
+  if(!step)return;
+  step.annotation=drawCanvas.toDataURL('image/png');
+  const img=document.getElementById('img-'+currentStepId);
+  if(img)img.src=step.annotation;
+  closeDrawModal(); showToast('書き込みを保存しました');
+}
+function closeDrawModal(){document.getElementById('drawModal').classList.remove('open');drawCtx=null;drawBgImage=null;drawHistory=[];}
+
+function showExport(){document.getElementById('exportModal').classList.add('open');}
+function exportText(){
+  const title=document.getElementById('docTitle').value||'操作手順';
+  let txt=title+'\n'+'='.repeat(30)+'\n\n';
+  steps.forEach((s,i)=>{txt+=`【手順 ${i+1}】\n${s.text||'（説明なし）'}\n\n`;});
+  navigator.clipboard.writeText(txt).then(()=>{document.getElementById('exportModal').classList.remove('open');showToast('テキストをコピーしました');});
+}
+function exportHTML(){
+  const title=document.getElementById('docTitle').value||'操作手順';
+  let html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:sans-serif;max-width:800px;margin:0 auto;padding:16px;background:#f4f4f4}h1{font-size:20px;border-bottom:3px solid #f0a500;padding-bottom:8px;margin-bottom:20px}.step{display:flex;gap:12px;background:#fff;border-radius:8px;padding:12px;margin-bottom:14px}.num{background:#f0a500;color:#111;font-weight:700;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px}.step img{width:160px;height:120px;object-fit:cover;border-radius:6px;flex-shrink:0}.step p{font-size:14px;line-height:1.7;flex:1;white-space:pre-wrap}</style></head><body><h1>⚙️ ${title}</h1>\n`;
+  steps.forEach((s,i)=>{
+    const imgSrc=s.annotation||s.photo||'';
+    html+=`<div class="step"><div class="num">${i+1}</div>`;
+    if(imgSrc)html+=`<img src="${imgSrc}">`;
+    html+=`<p>${s.text||''}</p></div>\n`;
+  });
+  html+='</body></html>';
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));
+  a.download=(title||'操作手順')+'.html'; a.click();
+  document.getElementById('exportModal').classList.remove('open');
+  showToast('HTMLファイルを保存しました');
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js');
+  });
+}
+
+loadAllFromStorage();
+renderList();
+</script>
+</body>
+</html>
+  
