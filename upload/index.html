@@ -46,8 +46,8 @@
   .step-num { background: var(--accent); color: #111; font-weight: 700; font-size: 12px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .step-label { font-size: 12px; color: var(--text2); flex: 1; }
   .step-delete { background: none; border: none; color: var(--danger); font-size: 16px; cursor: pointer; padding: 2px 6px; line-height: 1; }
-  .step-body { display: flex; min-height: 120px; }
-  .photo-area { width: 45%; min-height: 120px; background: var(--surface2); border-right: 1px solid var(--border); position: relative; overflow: hidden; flex-shrink: 0; -webkit-user-select: none; user-select: none; }
+  .step-body { display: flex; flex-direction: column; min-height: 120px; }
+  .photo-area { width: 100%; min-height: 220px; background: var(--surface2); border-bottom: 1px solid var(--border); position: relative; overflow: hidden; flex-shrink: 0; -webkit-user-select: none; user-select: none; }
   .photo-area.pressing { filter: brightness(1.4); }
   .photo-area input[type=file] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2; }
   .photo-placeholder { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--text2); pointer-events: none; z-index: 1; }
@@ -93,7 +93,7 @@
   .ctx-menu { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 16px 16px 0 0; border-top: 2px solid var(--accent); padding: 0 0 20px; z-index: 401; transform: translateY(100%); transition: transform 0.25s ease; }
   .ctx-backdrop.open .ctx-menu { transform: translateY(0); }
   .ctx-title { padding: 14px 16px 10px; font-size: 13px; color: var(--text2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
-  .ctx-preview { width: 44px; height: 44px; object-fit: contain; border-radius: 6px; flex-shrink: 0; }
+  .ctx-preview { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
   .ctx-btn { width: 100%; background: none; border: none; border-bottom: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 15px; padding: 16px 20px; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 14px; }
   .ctx-btn:active { background: var(--surface2); }
   .ctx-icon { font-size: 20px; width: 28px; text-align: center; }
@@ -102,7 +102,7 @@
   .stepsel-backdrop.open { display: flex; align-items: flex-end; }
   .stepsel-menu { width: 100%; background: var(--surface); border-radius: 16px 16px 0 0; border-top: 2px solid var(--accent); max-height: 70vh; display: flex; flex-direction: column; }
   .stepsel-header { padding: 14px 16px 10px; font-size: 14px; font-weight: 700; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
-  .stepsel-header img { width: 36px; height: 36px; object-fit: contain; border-radius: 5px; }
+  .stepsel-header img { width: 36px; height: 36px; object-fit: cover; border-radius: 5px; }
   .stepsel-list { overflow-y: auto; flex: 1; }
   .stepsel-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
   .stepsel-item:active { background: var(--surface2); }
@@ -618,7 +618,7 @@ function exportText(){
 }
 function exportHTML(){
   const title=document.getElementById('docTitle').value||'操作手順';
-  let html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:sans-serif;max-width:800px;margin:0 auto;padding:16px;background:#f4f4f4}h1{font-size:20px;border-bottom:3px solid #f0a500;padding-bottom:8px;margin-bottom:20px}.step{display:flex;gap:12px;background:#fff;border-radius:8px;padding:12px;margin-bottom:14px}.num{background:#f0a500;color:#111;font-weight:700;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px}.step img{width:160px;height:120px;object-fit:cover;border-radius:6px;flex-shrink:0}.step p{font-size:14px;line-height:1.7;flex:1;white-space:pre-wrap}</style></head><body><h1>⚙️ ${title}</h1>\n`;
+  let html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:sans-serif;max-width:800px;margin:0 auto;padding:16px;background:#f4f4f4}h1{font-size:20px;border-bottom:3px solid #f0a500;padding-bottom:8px;margin-bottom:20px}.step{background:#fff;border-radius:8px;padding:12px;margin-bottom:14px}.num{background:#f0a500;color:#111;font-weight:700;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;margin-bottom:8px}.step img{width:100%;max-height:300px;object-fit:contain;border-radius:6px;margin-bottom:8px}.step p{font-size:14px;line-height:1.7;white-space:pre-wrap}</style></head><body><h1>⚙️ ${title}</h1>\n`;
   steps.forEach((s,i)=>{
     const imgSrc=s.annotation||s.photo||'';
     html+=`<div class="step"><div class="num">${i+1}</div>`;
