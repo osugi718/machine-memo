@@ -138,6 +138,7 @@
     <button class="btn-new" onclick="newManual()">＋ 新規作成</button>
   </div>
 </div>
+
 <div class="screen" id="editorScreen">
   <div class="header">
     <button class="btn-back" onclick="goList()">‹</button>
@@ -293,7 +294,7 @@ function addStep(data = null) {
   steps.push(step);
   renderStep(step);
   updateStepCount();
-}
+  }
   function renderStep(step) {
   const idx = steps.indexOf(step) + 1;
   const card = document.createElement('div');
@@ -384,32 +385,51 @@ function addStep(data = null) {
   document.getElementById('stepsContainer').appendChild(card);
 }
 
+function compressPhoto(dataUrl, callback) {
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    const maxW = 1200, maxH = 1200;
+    let w = img.width, h = img.height;
+    if (w > maxW || h > maxH) {
+      const scale = Math.min(maxW/w, maxH/h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+    }
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    callback(canvas.toDataURL('image/jpeg', 0.82));
+  };
+  img.src = dataUrl;
+}
+
 function handlePhoto(event, id) {
   const file = event.target.files[0];
   if (!file) return;
   event.target.value = '';
   const reader = new FileReader();
   reader.onload = e => {
-    const src = e.target.result;
-    const step = steps.find(s => s.id === id);
-    step.photo = src; step.annotation = null;
-    const area = document.getElementById('photo-' + id);
-    let img = document.getElementById('img-' + id);
-    if (!img) {
-      img = document.createElement('img');
-      img.className = 'photo-img'; img.id = 'img-' + id;
-      area.appendChild(img);
-    }
-    img.src = src;
-    const ph = document.getElementById('placeholder-' + id);
-    if (ph) ph.style.display = 'none';
-    if (!area.querySelector('.draw-btn')) {
-      const drawBtn = document.createElement('button');
-      drawBtn.className = 'draw-btn'; drawBtn.textContent = '✏️';
-      drawBtn.addEventListener('click', e => { e.stopPropagation(); openDrawModal(id); });
-      area.appendChild(drawBtn);
-    }
-    showToast('写真を追加しました');
+    compressPhoto(e.target.result, src => {
+      const step = steps.find(s => s.id === id);
+      step.photo = src; step.annotation = null;
+      const area = document.getElementById('photo-' + id);
+      let img = document.getElementById('img-' + id);
+      if (!img) {
+        img = document.createElement('img');
+        img.className = 'photo-img'; img.id = 'img-' + id;
+        area.appendChild(img);
+      }
+      img.src = src;
+      const ph = document.getElementById('placeholder-' + id);
+      if (ph) ph.style.display = 'none';
+      if (!area.querySelector('.draw-btn')) {
+        const drawBtn = document.createElement('button');
+        drawBtn.className = 'draw-btn'; drawBtn.textContent = '✏️';
+        drawBtn.addEventListener('click', e => { e.stopPropagation(); openDrawModal(id); });
+        area.appendChild(drawBtn);
+      }
+      showToast('写真を追加しました');
+    });
   };
   reader.readAsDataURL(file);
 }
@@ -534,7 +554,7 @@ function applyStepSel() {
   });
   showToast(stepSelSelected.size + '件のステップにコピーしました');
   closeStepSel();
-    }
+      }
   function saveManual() {
   const title = document.getElementById('docTitle').value.trim();
   manuals[currentId] = { id:currentId, title, steps: JSON.parse(JSON.stringify(steps)), updatedAt: Date.now() };
@@ -560,21 +580,25 @@ function openDrawModal(id) {
   document.getElementById('drawModal').classList.add('open');
   setTimeout(() => {
     const wrap = drawCanvas.parentElement;
-    drawCanvas.width = wrap.offsetWidth; drawCanvas.height = wrap.offsetHeight;
-    const img = new Image();
-    img.onload = () => { drawBgImage = img; redrawCanvas(); };
-    img.src = step.annotation || step.photo;
+    const origImg = new Image();
+    origImg.onload = () => {
+      drawBgImage = origImg;
+      drawCanvas.width = wrap.offsetWidth;
+      drawCanvas.height = Math.round(wrap.offsetWidth * origImg.height / origImg.width);
+      redrawCanvas();
+    };
+    origImg.src = step.annotation || step.photo;
   }, 50);
 }
+
 function redrawCanvas() {
   if (!drawCtx||!drawBgImage) return;
   const cw=drawCanvas.width, ch=drawCanvas.height;
-  const scale=Math.min(cw/drawBgImage.width, ch/drawBgImage.height);
-  const dx=(cw-drawBgImage.width*scale)/2, dy=(ch-drawBgImage.height*scale)/2;
   drawCtx.clearRect(0,0,cw,ch);
   drawCtx.fillStyle='#1a1c20'; drawCtx.fillRect(0,0,cw,ch);
-  drawCtx.drawImage(drawBgImage,dx,dy,drawBgImage.width*scale,drawBgImage.height*scale);
+  drawCtx.drawImage(drawBgImage, 0, 0, cw, ch);
 }
+
 drawCanvas = document.getElementById('drawCanvas');
 drawCanvas.addEventListener('pointerdown', e => {
   if (!drawCtx) return; isDrawing = true;
@@ -599,10 +623,11 @@ function setColor(el){document.querySelectorAll('.color-btn').forEach(b=>b.class
 function setSize(el){document.querySelectorAll('.size-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');drawSize=parseInt(el.dataset.size);}
 function undoDraw(){if(!drawHistory.length||!drawCtx)return;drawCtx.putImageData(drawHistory.pop(),0,0);}
 function clearDraw(){if(!confirm('全消しますか？'))return;drawHistory=[];redrawCanvas();}
+
 function applyDraw(){
   const step=steps.find(s=>s.id===currentStepId);
   if(!step)return;
-  step.annotation=drawCanvas.toDataURL('image/png');
+  step.annotation=drawCanvas.toDataURL('image/jpeg', 0.85);
   const img=document.getElementById('img-'+currentStepId);
   if(img)img.src=step.annotation;
   closeDrawModal(); showToast('書き込みを保存しました');
@@ -618,7 +643,7 @@ function exportText(){
 }
 function exportHTML(){
   const title=document.getElementById('docTitle').value||'操作手順';
-  let html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:sans-serif;max-width:800px;margin:0 auto;padding:16px;background:#f4f4f4}h1{font-size:20px;border-bottom:3px solid #f0a500;padding-bottom:8px;margin-bottom:20px}.step{background:#fff;border-radius:8px;padding:12px;margin-bottom:14px}.num{background:#f0a500;color:#111;font-weight:700;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;margin-bottom:8px}.step img{width:100%;max-height:300px;object-fit:contain;border-radius:6px;margin-bottom:8px}.step p{font-size:14px;line-height:1.7;white-space:pre-wrap}</style></head><body><h1>⚙️ ${title}</h1>\n`;
+  let html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:sans-serif;max-width:800px;margin:0 auto;padding:16px;background:#f4f4f4}h1{font-size:20px;border-bottom:3px solid #f0a500;padding-bottom:8px;margin-bottom:20px}.step{background:#fff;border-radius:8px;padding:12px;margin-bottom:14px}.num{background:#f0a500;color:#111;font-weight:700;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;margin-bottom:8px}.step img{width:100%;max-height:400px;object-fit:contain;border-radius:6px;margin-bottom:8px}.step p{font-size:14px;line-height:1.7;white-space:pre-wrap}</style></head><body><h1>⚙️ ${title}</h1>\n`;
   steps.forEach((s,i)=>{
     const imgSrc=s.annotation||s.photo||'';
     html+=`<div class="step"><div class="num">${i+1}</div>`;
