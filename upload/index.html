@@ -120,8 +120,7 @@
 </style>
 </head>
 <body>
-
-<div class="screen active" id="listScreen">
+  <div class="screen active" id="listScreen">
   <div class="header">
     <div>
       <div class="header-title">⚙️ 機械操作メモ</div>
@@ -196,6 +195,11 @@
       <span class="export-icon">🌐</span>
       <div><div class="export-label">HTMLファイルとして保存</div><div class="export-desc">写真・書き込みをすべて含んだWebページ</div></div>
     </div>
+    <div class="export-option" onclick="importHTML()">
+      <span class="export-icon">📂</span>
+      <div><div class="export-label">HTMLファイルから読み込む</div><div class="export-desc">保存したHTMLファイルを復元する</div></div>
+    </div>
+    <input type="file" id="importFileInput" accept=".html" style="display:none" onchange="handleImport(event)">
     <div class="export-option" onclick="exportText()">
       <span class="export-icon">📝</span>
       <div><div class="export-label">テキストのみコピー</div><div class="export-desc">操作手順テキストをクリップボードにコピー</div></div>
@@ -294,8 +298,8 @@ function addStep(data = null) {
   steps.push(step);
   renderStep(step);
   updateStepCount();
-  }
-  function renderStep(step) {
+}
+function renderStep(step) {
   const idx = steps.indexOf(step) + 1;
   const card = document.createElement('div');
   card.className = 'step-card';
@@ -554,7 +558,7 @@ function applyStepSel() {
   });
   showToast(stepSelSelected.size + '件のステップにコピーしました');
   closeStepSel();
-      }
+    } 
   function saveManual() {
   const title = document.getElementById('docTitle').value.trim();
   manuals[currentId] = { id:currentId, title, steps: JSON.parse(JSON.stringify(steps)), updatedAt: Date.now() };
@@ -568,6 +572,51 @@ function loadAllFromStorage() {
   if (raw) { try { manuals = JSON.parse(raw); } catch(e) {} }
   const old = localStorage.getItem('machineManual');
   if (old && !raw) { try { const d=JSON.parse(old); const id=uid(); manuals[id]={id,title:d.title||'（旧データ）',steps:d.steps||[],updatedAt:Date.now()}; saveAllToStorage(); } catch(e) {} }
+}
+
+function importHTML() {
+  document.getElementById('importFileInput').click();
+}
+
+function handleImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const html = e.target.result;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      // Extract data from exported HTML
+      const steps_data = [];
+      doc.querySelectorAll('.step').forEach((stepEl, i) => {
+        const img = stepEl.querySelector('img');
+        const p = stepEl.querySelector('p');
+        steps_data.push({
+          id: uid(),
+          photo: img ? img.src : null,
+          annotation: null,
+          text: p ? p.textContent : ''
+        });
+      });
+      if (steps_data.length === 0) {
+        showToast('読み込めるデータがありません');
+        return;
+      }
+      const titleEl = doc.querySelector('h1');
+      const title = titleEl ? titleEl.textContent.replace('⚙️ ', '').trim() : '読み込んだメモ';
+      const newId = uid();
+      manuals[newId] = { id: newId, title, steps: steps_data, updatedAt: Date.now() };
+      saveAllToStorage();
+      document.getElementById('exportModal').classList.remove('open');
+      renderList();
+      showToast('「' + title + '」を読み込みました');
+    } catch(e) {
+      showToast('読み込みに失敗しました');
+    }
+  };
+  reader.readAsText(file);
 }
 
 function openDrawModal(id) {
