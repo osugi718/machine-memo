@@ -120,7 +120,7 @@
 </style>
 </head>
 <body>
-  <div class="screen active" id="listScreen">
+<div class="screen active" id="listScreen">
   <div class="header">
     <div>
       <div class="header-title">⚙️ 機械操作メモ</div>
@@ -298,7 +298,7 @@ function addStep(data = null) {
   steps.push(step);
   renderStep(step);
   updateStepCount();
-}
+} 
 function renderStep(step) {
   const idx = steps.indexOf(step) + 1;
   const card = document.createElement('div');
@@ -558,7 +558,7 @@ function applyStepSel() {
   });
   showToast(stepSelSelected.size + '件のステップにコピーしました');
   closeStepSel();
-    } 
+  } 
   function saveManual() {
   const title = document.getElementById('docTitle').value.trim();
   manuals[currentId] = { id:currentId, title, steps: JSON.parse(JSON.stringify(steps)), updatedAt: Date.now() };
@@ -588,32 +588,35 @@ function handleImport(event) {
       const html = e.target.result;
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
-      // Extract data from exported HTML
+      const stepEls = doc.querySelectorAll('.step');
       const steps_data = [];
-      doc.querySelectorAll('.step').forEach((stepEl, i) => {
+      stepEls.forEach((stepEl) => {
         const img = stepEl.querySelector('img');
         const p = stepEl.querySelector('p');
         steps_data.push({
           id: uid(),
-          photo: img ? img.src : null,
+          photo: img ? img.getAttribute('src') : null,
           annotation: null,
           text: p ? p.textContent : ''
         });
       });
       if (steps_data.length === 0) {
-        showToast('読み込めるデータがありません');
+        showToast('読み込めるデータがありません (' + stepEls.length + ')');
         return;
       }
       const titleEl = doc.querySelector('h1');
-      const title = titleEl ? titleEl.textContent.replace('⚙️ ', '').trim() : '読み込んだメモ';
+      let title = '読み込んだメモ';
+      if (titleEl) {
+        title = titleEl.textContent.replace('⚙️', '').trim();
+      }
       const newId = uid();
-      manuals[newId] = { id: newId, title, steps: steps_data, updatedAt: Date.now() };
+      manuals[newId] = { id: newId, title: title, steps: steps_data, updatedAt: Date.now() };
       saveAllToStorage();
       document.getElementById('exportModal').classList.remove('open');
       renderList();
       showToast('「' + title + '」を読み込みました');
-    } catch(e) {
-      showToast('読み込みに失敗しました');
+    } catch(err) {
+      showToast('読み込みエラー: ' + err.message);
     }
   };
   reader.readAsText(file);
