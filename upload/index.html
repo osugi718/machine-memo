@@ -117,6 +117,12 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 .stepsel-footer button { flex: 1; padding: 12px; border-radius: 8px; border: none; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .stepsel-ok { background: var(--accent); color: #111; }
 .stepsel-cancel { background: var(--surface2); color: var(--text2); border: 1px solid var(--border) !important; }
+.photo-choice-backdrop { display: none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); z-index: 600; align-items: flex-end; }
+.photo-choice-backdrop.open { display: flex; }
+.photo-choice-menu { width: 100%; background: var(--surface); border-radius: 16px 16px 0 0; border-top: 2px solid var(--accent); padding: 0 0 20px; }
+.photo-choice-btn { width: 100%; background: none; border: none; border-bottom: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 15px; padding: 16px 20px; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 14px; }
+.photo-choice-btn:active { background: var(--surface2); }
+.photo-choice-cancel { width: calc(100% - 32px); margin: 10px 16px 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text2); font-family: inherit; font-size: 14px; font-weight: 700; padding: 14px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -234,6 +240,13 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 </div>
 </div>
 </div>
+<div class="photo-choice-backdrop" id="photoChoiceBackdrop" onclick="closePhotoChoice()">
+<div class="photo-choice-menu" onclick="event.stopPropagation()">
+<button class="photo-choice-btn" onclick="choosePhotoSource('camera')"><span class="ctx-icon">📷</span>写真を撮る</button>
+<button class="photo-choice-btn" onclick="choosePhotoSource('gallery')"><span class="ctx-icon">🖼️</span>アルバムから選ぶ</button>
+<button class="photo-choice-cancel" onclick="closePhotoChoice()">キャンセル</button>
+</div>
+</div>
 <div class="toast" id="toast"></div>
 <script>
 let manuals = {}, currentId = null, steps = [];
@@ -241,6 +254,7 @@ let drawCtx = null, drawCanvas = null, currentStepId = null;
 let isDrawing = false, lastX = 0, lastY = 0;
 let drawColor = '#f0a500', drawSize = 3, drawHistory = [], drawBgImage = null;
 let ctxId = null;
+let photoChoiceStepId = null;
 let stepSelSelected = new Set();
 let stepSelSrcId = null;
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
@@ -303,10 +317,20 @@ const fileInput = document.createElement('input');
 fileInput.type = 'file';
 fileInput.accept = 'image/*';
 fileInput.id = 'file-' + step.id;
+fileInput.style.display = 'none';
 fileInput.addEventListener('change', e => handlePhoto(e, step.id));
+photoArea.appendChild(fileInput);
+const cameraInput = document.createElement('input');
+cameraInput.type = 'file';
+cameraInput.accept = 'image/*';
+cameraInput.setAttribute('capture', 'environment');
+cameraInput.id = 'camera-' + step.id;
+cameraInput.style.display = 'none';
+cameraInput.addEventListener('change', e => handlePhoto(e, step.id));
+photoArea.appendChild(cameraInput);
 let pressTimer = null;
 let longFired = false;
-fileInput.addEventListener('touchstart', e => {
+photoArea.addEventListener('touchstart', e => {
 longFired = false;
 pressTimer = setTimeout(() => {
 longFired = true;
@@ -317,30 +341,30 @@ if (s && s.photo) openCtx(step.id);
 }, 600);
 photoArea.classList.add('pressing');
 }, { passive: true });
-fileInput.addEventListener('touchend', e => {
+photoArea.addEventListener('touchend', e => {
 photoArea.classList.remove('pressing');
 if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-if (longFired) { e.preventDefault(); longFired = false; }
+if (longFired) { longFired = false; return; }
+openPhotoChoice(step.id);
 });
-fileInput.addEventListener('touchmove', () => {
+photoArea.addEventListener('touchmove', () => {
 if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
 photoArea.classList.remove('pressing');
 }, { passive: true });
-fileInput.addEventListener('touchcancel', () => {
+photoArea.addEventListener('touchcancel', () => {
 if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
 photoArea.classList.remove('pressing');
 });
-fileInput.addEventListener('contextmenu', e => e.preventDefault());
-photoArea.appendChild(fileInput);
+photoArea.addEventListener('contextmenu', e => e.preventDefault());
 if (step.photo) {
 const img = document.createElement('img');
-img.className = 'photo-img'; img.id = 'img-' + step.id;
+  img.className = 'photo-img'; img.id = 'img-' + step.id;
 img.src = step.annotation || step.photo;
 photoArea.appendChild(img);
 }
 const placeholder = document.createElement('div');
 placeholder.className = 'photo-placeholder'; placeholder.id = 'placeholder-' + step.id;
-  placeholder.style.display = step.photo ? 'none' : '';
+placeholder.style.display = step.photo ? 'none' : '';
 placeholder.innerHTML = '<span class="icon">📷</span><span>タップで撮影・選択<br>長押しでコピー</span>';
 photoArea.appendChild(placeholder);
 if (step.photo) {
@@ -476,7 +500,16 @@ if (!targets.length) { showToast('コピー先のステップがありません'
 targets.forEach(t => { t.photo = step.photo; t.annotation = null; updatePhotoDisplay(t.id); });
 showToast(targets.length+'件にコピーしました'); closeCtx();
 }
-function ctxReplace() { const id=ctxId; closeCtx(); document.getElementById('file-'+id)?.click(); }
+function ctxReplace() { const id=ctxId; closeCtx(); openPhotoChoice(id); }
+function openPhotoChoice(id) { photoChoiceStepId = id; document.getElementById('photoChoiceBackdrop').classList.add('open'); }
+function closePhotoChoice() { document.getElementById('photoChoiceBackdrop').classList.remove('open'); photoChoiceStepId = null; }
+function choosePhotoSource(src) {
+const id = photoChoiceStepId;
+closePhotoChoice();
+if (!id) return;
+if (src === 'camera') document.getElementById('camera-'+id)?.click();
+else document.getElementById('file-'+id)?.click();
+}
 function ctxDraw() { const id=ctxId; closeCtx(); const s=steps.find(x=>x.id===id); if(s?.photo) openDrawModal(id); }
 function ctxCopySelect() {
 const srcStep = steps.find(s => s.id === ctxId);
@@ -505,13 +538,13 @@ stepSelSelected.add(s.id);
 item.classList.add('selected');
 item.querySelector('.stepsel-check').textContent = '✓';
 }
-});
+  });
 list.appendChild(item);
 });
 document.getElementById('stepselBackdrop').classList.add('open');
 }
 function closeStepSel() {
-  document.getElementById('stepselBackdrop').classList.remove('open');
+document.getElementById('stepselBackdrop').classList.remove('open');
 stepSelSelected = new Set();
 }
 function applyStepSel() {
@@ -685,3 +718,4 @@ renderList();
 </script>
 </body>
 </html>
+  
