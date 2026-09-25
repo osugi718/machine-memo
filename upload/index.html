@@ -331,6 +331,7 @@ photoArea.appendChild(cameraInput);
 let pressTimer = null;
 let longFired = false;
 photoArea.addEventListener('touchstart', e => {
+if (e.target.closest && e.target.closest('.draw-btn')) return;
 longFired = false;
 pressTimer = setTimeout(() => {
 longFired = true;
@@ -342,6 +343,7 @@ if (s && s.photo) openCtx(step.id);
 photoArea.classList.add('pressing');
 }, { passive: true });
 photoArea.addEventListener('touchend', e => {
+if (e.target.closest && e.target.closest('.draw-btn')) return;
 photoArea.classList.remove('pressing');
 if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
 if (longFired) { longFired = false; return; }
@@ -356,9 +358,9 @@ if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
 photoArea.classList.remove('pressing');
 });
 photoArea.addEventListener('contextmenu', e => e.preventDefault());
-if (step.photo) {
+  if (step.photo) {
 const img = document.createElement('img');
-  img.className = 'photo-img'; img.id = 'img-' + step.id;
+img.className = 'photo-img'; img.id = 'img-' + step.id;
 img.src = step.annotation || step.photo;
 photoArea.appendChild(img);
 }
@@ -536,9 +538,9 @@ item.querySelector('.stepsel-check').textContent = '';
 } else {
 stepSelSelected.add(s.id);
 item.classList.add('selected');
-item.querySelector('.stepsel-check').textContent = '✓';
+  item.querySelector('.stepsel-check').textContent = '✓';
 }
-  });
+});
 list.appendChild(item);
 });
 document.getElementById('stepselBackdrop').classList.add('open');
@@ -718,4 +720,3 @@ renderList();
 </script>
 </body>
 </html>
-  
