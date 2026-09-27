@@ -701,4 +701,22 @@ html+=`<p>${s.text||''}</p></div>\n`;
 html+='</body></html>';
 const a=document.createElement('a');
 a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));
-a.download=(title||'操作手順')+'.html'; a.c
+a.download=(title||'操作手順')+'.html'; a.click();
+document.getElementById('exportModal').classList.remove('open');
+showToast('HTMLファイルを保存しました');
+}
+function showToast(msg){
+const t=document.getElementById('toast');
+t.textContent=msg; t.classList.add('show');
+setTimeout(()=>t.classList.remove('show'),2200);
+}
+if ('serviceWorker' in navigator) {
+window.addEventListener('load', () => {
+navigator.serviceWorker.register('./sw.js');
+});
+}
+loadAllFromStorage();
+renderList();
+</script>
+</body>
+</html>
