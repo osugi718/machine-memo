@@ -1,4 +1,4 @@
-const CACHE = 'machine-memo-v3';
+const CACHE = 'machine-memo-v4';
 const FILES = ['./index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
